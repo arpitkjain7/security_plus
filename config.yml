@@ -1,0 +1,2 @@
+model_path: infer/model/licence-plate_v2.h5
+label_encoder_path: infer/label_encoder/label_encoder_cars.pickle
