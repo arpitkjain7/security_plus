@@ -8,6 +8,7 @@ import imutils
 import pickle
 import cv2
 import os
+import re
 from infer.ocr import get_text
 from infer.config import load_config
 
@@ -81,6 +82,11 @@ def apply_NMS(proba, boxes):
     return coordinates
 
 
+def text_postprocess(text):
+    text = re.sub("[^a-zA-Z0-9]", "", text)
+    return text
+
+
 def infer(image_path: str, batch_id: str):
     OutputFolder = os.path.join("output", batch_id)
     os.makedirs(OutputFolder, exist_ok=True)
@@ -97,13 +103,15 @@ def infer(image_path: str, batch_id: str):
     cv2.imwrite(os.path.join(OutputFolder, "cropped.jpg"), cropped)
     ocr_result = get_text(OutputFolder)
     print(ocr_result)
+    ocr_result = text_postprocess(ocr_result)
+    cv2.rectangle(image, (startX, startY), (endX, endY), (0, 255, 0), 2)
+    y = startY - 10 if startY - 10 > 10 else startY + 10
+    text = f"{ocr_result}"
+    cv2.putText(
+        image, text, (startX, y), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 255, 0), 1
+    )
+    cv2.imwrite(os.path.join(OutputFolder, "final.jpg"), image)
     return ocr_result
-    # cv2.rectangle(image, (startX, startY), (endX, endY), (0, 255, 0), 2)
-    # y = startY - 10 if startY - 10 > 10 else startY + 10
-    # text = f"{ocr_result}"
-    # cv2.putText(
-    #     image, text, (startX, y), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 255, 0), 2
-    # )
 
 
 # infer("/Users/arpitkjain/Desktop/Data/POC/security_plus/test-data/abhilash-1.jpeg")
