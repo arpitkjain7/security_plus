@@ -7,7 +7,7 @@ import time
 import os
 from datetime import datetime
 
-video = "video/22.mp4"
+video = "video/abhilash.mp4"
 stream = cv2.VideoCapture(video)
 fps = FPS().start()
 batch_id = str(int(datetime.now().timestamp() * 1000))

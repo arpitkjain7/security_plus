@@ -53,7 +53,7 @@ def apply_NMS(proba, boxes):
     proba = proba[idxs][:, 0]
     # further filter indexes by enforcing a minimum prediction
     # probability be met
-    idxs = np.where(proba >= 0.8)
+    idxs = np.where(proba >= 0.95)
     boxes = boxes[idxs]
     proba = proba[idxs]
 
@@ -74,12 +74,14 @@ def apply_NMS(proba, boxes):
         n += 1
     maximum = 0
     bounding_box_index = 0
+    coordinate_list = []
     for ind, percent in pred_dict.items():
         if percent > maximum:
             maximum = percent
             bounding_box_index = ind
+        coordinate_list.append(boxes[ind])
     coordinates = boxes[bounding_box_index]
-    return coordinates
+    return coordinates, coordinate_list
 
 
 def text_postprocess(text):
@@ -97,21 +99,25 @@ def infer(image_path: str, batch_id: str):
     rect = selective_search(image)
     proposals, boxes = get_proposals(image, rect)
     proba = model.predict(proposals)
-    (startX, startY, endX, endY) = apply_NMS(proba, boxes)
-
-    cropped = image[startY:endY, startX:endX]
-    cv2.imwrite(os.path.join(OutputFolder, "cropped.jpg"), cropped)
-    ocr_result = get_text(OutputFolder)
-    print(ocr_result)
-    ocr_result = text_postprocess(ocr_result)
-    cv2.rectangle(image, (startX, startY), (endX, endY), (0, 255, 0), 2)
-    y = startY - 10 if startY - 10 > 10 else startY + 10
-    text = f"{ocr_result}"
-    cv2.putText(
-        image, text, (startX, y), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 255, 0), 1
-    )
-    cv2.imwrite(os.path.join(OutputFolder, "final.jpg"), image)
-    return ocr_result
+    (startX, startY, endX, endY), coordinate_list = apply_NMS(proba, boxes)
+    ocr_result_list = []
+    for num, items in enumerate(coordinate_list):
+        clone = image.copy()
+        (startX, startY, endX, endY) = items
+        cropped = clone[startY:endY, startX:endX]
+        cv2.imwrite(os.path.join(OutputFolder, f"cropped_{num}.jpg"), cropped)
+        ocr_result = get_text(os.path.join(OutputFolder, f"cropped_{num}.jpg"))
+        # print(ocr_result)
+        ocr_result = text_postprocess(ocr_result)
+        # cv2.rectangle(image, (startX, startY), (endX, endY), (0, 255, 0), 2)
+        # y = startY - 10 if startY - 10 > 10 else startY + 10
+        # text = f"{ocr_result}"
+        # cv2.putText(
+        #     image, text, (startX, y), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 255, 0), 1
+        # )
+        # cv2.imwrite(os.path.join(OutputFolder, "final.jpg"), image)
+        ocr_result_list.append(ocr_result)
+    return ocr_result_list
 
 
 # infer("/Users/arpitkjain/Desktop/Data/POC/security_plus/test-data/abhilash-1.jpeg")
