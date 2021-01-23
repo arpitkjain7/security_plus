@@ -27,7 +27,7 @@ def filter(blocks):
 def detect_text(image_path):
     # print(image_path)
     blocks = call_textract(image_path)
-    # print(blocks)
+    print(f"blocks : {blocks}")
     extracted_data = filter(blocks)
     # print(extracted_data)
     return extracted_data

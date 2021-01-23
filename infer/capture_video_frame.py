@@ -24,7 +24,7 @@ while True:
         break
     # resize the frame and convert it to grayscale (while still
     # retaining 3 channels)
-    frame = imutils.resize(frame, width=1000)
+    frame = imutils.resize(frame, width=2000)
     # show the frame and update the FPS counter
     if frame_num % 75 == 0:
         cv2.imwrite(f"{folder}/{frame_num}.jpg", frame)

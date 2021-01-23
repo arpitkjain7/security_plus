@@ -8,9 +8,8 @@ import pickle
 import cv2
 import os
 import re
-from infer.ocr import get_text, get_text_textract
-from infer.config import load_config
-from db.crud.crud_batch import create_batch
+from ocr import get_text
+from config import load_config
 
 config = load_config()
 model_path = config.get("model_path")
@@ -31,7 +30,7 @@ def get_proposals(image, rect):
     for x, y, w, h in rect[:200]:
         roi = image[y : y + h, x : x + w]
         roi = cv2.cvtColor(roi, cv2.COLOR_BGR2RGB)
-        roi = cv2.resize(roi, (244, 244), interpolation=cv2.INTER_CUBIC)
+        roi = cv2.resize(roi, (224, 224), interpolation=cv2.INTER_CUBIC)
         roi = img_to_array(roi)
         # roi = preprocess_input(roi)
         proposals.append(roi)
@@ -60,7 +59,7 @@ def apply_NMS(proba, boxes):
     # loop over the bounding boxes and associated probabilities
     for (box, prob) in zip(boxes, proba):
         (startX, startY, endX, endY) = box
-    boxIdxs = non_max_suppression(boxes, proba, max_output_size=1)
+    boxIdxs = non_max_suppression(boxes, proba, max_output_size=5)
     # print(boxIdxs)
     boxes = gather(boxes, boxIdxs)
     n = 0
@@ -85,9 +84,7 @@ def apply_NMS(proba, boxes):
 
 
 def text_postprocess(text):
-    text = text.replace("/n", "")
-    text = text.replace("/t", "")
-    text = re.sub("[^A-Z0-9]", "", text)
+    text = re.sub("[^a-zA-Z0-9]", "", text)
     return text
 
 
@@ -103,42 +100,26 @@ def infer(image_path: str, batch_id: str):
     proba = model.predict(proposals)
     (startX, startY, endX, endY), coordinate_list = apply_NMS(proba, boxes)
     ocr_result_list = []
-    db_request = {}
     for num, items in enumerate(coordinate_list):
         clone = image.copy()
         (startX, startY, endX, endY) = items
         cropped = clone[startY:endY, startX:endX]
-        # cropped = cv2.medianBlur(cropped, 5)
-        # ret, cropped = cv2.threshold(cropped, 150, 255, cv2.THRESH_BINARY)
-        # gray = cv2.cvtColor(cropped, cv2.COLOR_BGR2GRAY)
-        # gray = cv2.bitwise_not(gray)
-        # # threshold the image, setting all foreground pixels to
-        # # 255 and all background pixels to 0
-        # thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
-        out_path = os.path.join(OutputFolder, f"cropped_{num}.jpg")
-        cv2.imwrite(out_path, cropped)
-        # ocr_result = get_text(out_path)
-        ocr_result = get_text_textract(out_path)
+        cv2.imwrite(os.path.join(OutputFolder, f"cropped_{num}.jpg"), cropped)
+        ocr_result = get_text(os.path.join(OutputFolder, f"cropped_{num}.jpg"))
         # print(ocr_result)
         ocr_result = text_postprocess(ocr_result)
-        # cv2.rectangle(image, (startX, startY), (endX, endY), (0, 255, 0), 2)
-        # y = startY - 10 if startY - 10 > 10 else startY + 10
-        # text = f"{ocr_result}"
-        # cv2.putText(
-        #     image, text, (startX, y), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 255, 0), 1
-        # )
-        # cv2.imwrite(os.path.join(OutputFolder, "final.jpg"), image)
-        # cv2.imshow("output", image)
-        # cv2.waitKey(100)
-        # cv2.destroyAllWindows()
-        db_request.update(
-            {
-                "batch_id": batch_id,
-                "licence_plate_path": out_path,
-                "licence_num": ocr_result,
-            }
+        cv2.rectangle(image, (startX, startY), (endX, endY), (0, 255, 0), 2)
+        y = startY - 10 if startY - 10 > 10 else startY + 10
+        text = f"{ocr_result}"
+        cv2.putText(
+            image, text, (startX, y), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 255, 0), 1
         )
+        cv2.imwrite(os.path.join(OutputFolder, "final.jpg"), image)
+        cv2.imshow("output", image)
+        cv2.waitKey(100)
+        cv2.destroyAllWindows()
         ocr_result_list.append(ocr_result)
-    create_batch(db_request)
     return ocr_result_list
 
+
+infer("/Users/arpitkjain/Desktop/Data/POC/security_plus/test-data/abhilash-1.jpeg")

@@ -1,0 +1,1 @@
+pg_ctl -D /Users/arpitkjain/Desktop/Data/POC/security_plus/db/data stop

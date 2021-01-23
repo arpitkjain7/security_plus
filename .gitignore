@@ -44,6 +44,7 @@ test-data/
 work_dir/
 frames/
 video/
+db/data
 
 # Translations
 *.mo
