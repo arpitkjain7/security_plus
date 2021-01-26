@@ -16,6 +16,7 @@ def create_batch(request):
     # batch.updated == current_time
     batch = Batch(
         request.get("batch_id"),
+        request.get("frame_id"),
         request.get("licence_num"),
         request.get("licence_plate_path"),
         current_time,
