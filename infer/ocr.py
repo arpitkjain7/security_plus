@@ -1,7 +1,7 @@
 import cv2
 import os
 import pytesseract
-
+from skimage.exposure import is_low_contrast
 from infer.ocr_textract import detect_text
 
 
@@ -25,7 +25,6 @@ def get_text(path: str):
 
     # deskewed_page = preprocess_image(file_path=os.path.join(path, images))
     img = cv2.imread(path)
-
     # img = cv2.medianBlur(img, 5)
 
     # ret, th1 = cv2.threshold(img, 127, 255, cv2.THRESH_BINARY)
@@ -34,18 +33,26 @@ def get_text(path: str):
     # # By default OpenCV stores images in BGR format and since pytesseract assumes RGB format,
     # # we need to convert from BGR to RGB format/mode:
     img_grey = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    blurred = cv2.GaussianBlur(img_grey, (5, 5), 0)
+    # edged = cv2.Canny(blurred, 30, 150)
+    cv2.imwrite(path, blurred)
     # cv2.imshow("Gray image", deskewed_page)
     # cv2.waitKey(100)
     # cv2.destroyAllWindows()
     # custom_config = r"--oem 3 --psm 11"
-    alphanumeric = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-    custom_config = f"-c tessedit_char_whitelist={alphanumeric} --psm 6"
-    # custom_config = r"--psm 7"
-    ocr_result = pytesseract.image_to_string(img_grey, config=custom_config)
-    # ocr_result = pytesseract.image_to_string(img_grey)
-    # ocr_result = detect_text(path)
-    print(f"ocr_result : {ocr_result}")
-    return ocr_result
+    low_contrast_image = is_low_contrast(blurred, fraction_threshold=0.35)
+    print(f"{low_contrast_image=}")
+    if not low_contrast_image:
+        alphanumeric = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+        custom_config = f"-c tessedit_char_whitelist={alphanumeric} --psm 6"
+        # custom_config = r"--psm 7"
+        ocr_result = pytesseract.image_to_string(blurred, config=custom_config)
+        # ocr_result = pytesseract.image_to_string(img_grey)
+        # ocr_result = detect_text(path)
+        print(f"ocr_result : {ocr_result}")
+        return ocr_result
+    print("low contrast")
+    return "low contrast"
 
 
 def get_text_textract(path: str):
